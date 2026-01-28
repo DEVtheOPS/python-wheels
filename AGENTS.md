@@ -207,6 +207,15 @@ packages:
 - Cleans up Docker images after each build
 - If still failing, reduce parallelism by building fewer versions at once
 
+**CUDA version mismatch with PyTorch:**
+- Error: `RuntimeError: The detected CUDA version (X.X) mismatches the version that was used to compile PyTorch (Y.Y)`
+- **Cause:** PyTorch (required by flash-attn) must match CUDA version
+- **Solution:** Only use CUDA versions supported by PyTorch
+  - CUDA 12.x: Fully supported (use default: 12.9.1)
+  - CUDA 13.x: Not yet supported by stable PyTorch builds
+- **Check PyTorch compatibility:** https://pytorch.org/get-started/locally/
+- Workflow automatically uses matching PyTorch index for CUDA 12.x
+
 ## Workflow Permissions
 
 Required permissions in `.github/workflows/build-wheels.yml`:

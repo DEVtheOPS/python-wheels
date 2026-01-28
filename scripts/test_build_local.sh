@@ -116,10 +116,24 @@ echo "==> Python version: $(python --version)"
 echo "==> CUDA version: $(nvcc --version | grep release)"
 echo ""
 
-# Install build dependencies
+# Install build dependencies with matching CUDA version
 if [ -n "$EXTRA_DEPS" ]; then
     echo "==> Installing build dependencies: $EXTRA_DEPS"
-    pip install --quiet $EXTRA_DEPS
+
+    # Extract CUDA version from nvcc
+    CUDA_VER_MAJOR=$(nvcc --version | grep "release" | sed -n "s/.*release \([0-9]*\)\.\([0-9]*\).*/\1/p")
+    CUDA_VER_MINOR=$(nvcc --version | grep "release" | sed -n "s/.*release \([0-9]*\)\.\([0-9]*\).*/\2/p")
+
+    if [ "$CUDA_VER_MAJOR" = "13" ]; then
+        echo "WARNING: CUDA 13.x detected. PyTorch may not support this version yet."
+        echo "Build may fail with CUDA version mismatch error."
+        pip install --quiet $EXTRA_DEPS
+    elif [ "$CUDA_VER_MAJOR" = "12" ]; then
+        echo "Using PyTorch index for CUDA ${CUDA_VER_MAJOR}.${CUDA_VER_MINOR}"
+        pip install --quiet $EXTRA_DEPS --index-url https://download.pytorch.org/whl/cu${CUDA_VER_MAJOR}${CUDA_VER_MINOR}
+    else
+        pip install --quiet $EXTRA_DEPS
+    fi
 fi
 
 echo "==> Building $PACKAGE==$VERSION"

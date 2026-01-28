@@ -15,7 +15,7 @@ on:
       cuda_versions:
         description: "CUDA versions (comma-separated)"
         required: false
-        default: "12.9.1,13.0.2"
+        default: "12.9.1"
         type: string
 
   push:
@@ -68,7 +68,7 @@ jobs:
           python_input = '${{ inputs.python_versions }}'
           cuda_input = '${{ inputs.cuda_versions }}'
           python_versions = python_input.split(',') if python_input else ['3.12', '3.13']
-          cuda_versions = cuda_input.split(',') if cuda_input else ['12.1.0', '13.0']
+          cuda_versions = cuda_input.split(',') if cuda_input else ['12.9.1']
 
           def cleaned(items):
               return [item.strip() for item in items if item.strip()]
@@ -169,6 +169,7 @@ jobs:
             -e PACKAGE="$PACKAGE" \
             -e VERSION="$VERSION" \
             -e PYTHON_VERSION="$PYTHON" \
+            -e CUDA_VERSION="$CUDA" \
             -e BUILD_ARGS="$BUILD_ARGS" \
             -e EXTRA_DEPS="$EXTRA_DEPS" \
             nvidia/cuda:${CUDA}-devel-ubuntu22.04 \
@@ -197,10 +198,25 @@ jobs:
           echo "==> Python version: $(python --version)"
           echo "==> CUDA version: $(nvcc --version | grep release)"
 
-          # Install build dependencies
+          # Install build dependencies with matching CUDA version
           if [ -n "$EXTRA_DEPS" ]; then
               echo "==> Installing build dependencies: $EXTRA_DEPS"
-              pip install --quiet $EXTRA_DEPS
+
+              # Determine PyTorch index based on CUDA version
+              CUDA_MAJOR=$(echo $CUDA_VERSION | cut -d'.' -f1)
+              CUDA_MINOR=$(echo $CUDA_VERSION | cut -d'.' -f2)
+
+              if [ "$CUDA_MAJOR" = "13" ]; then
+                  echo "WARNING: CUDA 13.x detected. PyTorch may not support this version yet."
+                  echo "Attempting to install latest PyTorch (may be CUDA 12.x compatible)"
+                  pip install --quiet $EXTRA_DEPS
+              elif [ "$CUDA_MAJOR" = "12" ]; then
+                  # Use PyTorch with CUDA 12.x support
+                  echo "Using PyTorch index for CUDA ${CUDA_MAJOR}.${CUDA_MINOR}"
+                  pip install --quiet $EXTRA_DEPS --index-url https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}
+              else
+                  pip install --quiet $EXTRA_DEPS
+              fi
           fi
 
           echo "==> Building $PACKAGE==$VERSION"
