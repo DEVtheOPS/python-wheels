@@ -1,0 +1,101 @@
+name: Build Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Specific package to build (optional, builds all if empty)'
+        required: false
+        type: string
+      python_versions:
+        description: 'Python versions (comma-separated)'
+        required: false
+        default: '3.12,3.13'
+        type: string
+      cuda_versions:
+        description: 'CUDA versions (comma-separated)'
+        required: false
+        default: '12.1.0,13.0'
+        type: string
+
+  push:
+    paths:
+      - 'config/packages.yml'
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  prepare:
+    name: Prepare Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Generate build matrix
+        id: set-matrix
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          import yaml
+
+          with open('config/packages.yml', 'r', encoding='utf-8') as f:
+              config = yaml.safe_load(f) or {}
+
+          packages = config.get('packages', {})
+
+          package_filter = '${{ inputs.package }}'
+          if package_filter:
+              packages = {k: v for k, v in packages.items() if k == package_filter}
+
+          python_input = '${{ inputs.python_versions }}'
+          cuda_input = '${{ inputs.cuda_versions }}'
+          python_versions = python_input.split(',') if python_input else ['3.12', '3.13']
+          cuda_versions = cuda_input.split(',') if cuda_input else ['12.1.0', '13.0']
+
+          def cleaned(items):
+              return [item.strip() for item in items if item.strip()]
+
+          python_versions = cleaned(python_versions)
+          cuda_versions = cleaned(cuda_versions)
+
+          matrix_entries = []
+          for pkg_name, pkg_config in packages.items():
+              for version in pkg_config.get('versions', []):
+                  for python in python_versions:
+                      for cuda in cuda_versions:
+                          matrix_entries.append({
+                              'package': pkg_name,
+                              'version': str(version).strip(),
+                              'python': python,
+                              'cuda': cuda,
+                              'build_args': pkg_config.get('build_args', ''),
+                              'extra_deps': ' '.join(pkg_config.get('extra_deps', [])),
+                              'test_import': pkg_config.get('test_import', pkg_name.replace('-', '_')),
+                          })
+
+          matrix = {'include': matrix_entries}
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+
+          print(f"Generated matrix with {len(matrix_entries)} jobs")
+          print(json.dumps(matrix, indent=2))
+          EOF
