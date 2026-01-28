@@ -248,42 +248,43 @@ jobs:
 
                   # Patch the _check_cuda_version function to be a no-op
                   cat > /tmp/patch_torch.py << "EOPY"
-                import sys
-                filepath = sys.argv[1]
-                with open(filepath, "r") as f:
-                    content = f.read()
+import sys
+filepath = sys.argv[1]
+with open(filepath, "r") as f:
+    content = f.read()
 
-                # Replace the _check_cuda_version function to skip the check
-                content = content.replace(
-                    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:",
-                    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:\n    return  # Patched for CUDA 13.x compatibility"
-                )
+# Replace the _check_cuda_version function to skip the check
+content = content.replace(
+    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:",
+    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:\\n    return  # Patched for CUDA 13.x compatibility"
+)
 
-                with open(filepath, "w") as f:
-                    f.write(content)
-                print(f"Patched {filepath}")
-                EOPY
-                                  python /tmp/patch_torch.py "$TORCH_UTILS/cpp_extension.py"
-                              fi
-                          fi
+with open(filepath, "w") as f:
+    f.write(content)
+print(f"Patched {filepath}")
+EOPY
+                  python /tmp/patch_torch.py "$TORCH_UTILS/cpp_extension.py"
+              fi
+          fi
 
-                          pip wheel "$PACKAGE==$VERSION" \
-                              $BUILD_ARGS \
-                              --wheel-dir=/workspace/wheels
+          pip wheel "$PACKAGE==$VERSION" \
+              $BUILD_ARGS \
+              --wheel-dir=/workspace/wheels
 
-                          echo "==> Built wheels:"
-                          ls -lh /workspace/wheels/
-                          '
+          echo ""
+          echo "==> Built wheels:"
+          ls -lh /workspace/wheels/
+          '
 
-                          # Find the built wheel
-                          WHEEL_FILE=$(ls wheels/*.whl | head -1)
-                          if [ -z "$WHEEL_FILE" ]; then
-                              echo "Error: No wheel file found"
-                              exit 1
-                          fi
+          # Find the built wheel
+          WHEEL_FILE=$(ls wheels/*.whl | head -1)
+          if [ -z "$WHEEL_FILE" ]; then
+              echo "Error: No wheel file found"
+              exit 1
+          fi
 
-                          echo "wheel_file=$WHEEL_FILE" >> $GITHUB_OUTPUT
-                          echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
+          echo "wheel_file=$WHEEL_FILE" >> $GITHUB_OUTPUT
+          echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
 
                       - name: Test wheel import
                         run: |
