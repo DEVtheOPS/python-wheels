@@ -248,87 +248,87 @@ jobs:
 
                   # Patch the _check_cuda_version function to be a no-op
                   cat > /tmp/patch_torch.py << "EOPY"
-import sys
-filepath = sys.argv[1]
-with open(filepath, "r") as f:
-    content = f.read()
+                import sys
+                filepath = sys.argv[1]
+                with open(filepath, "r") as f:
+                    content = f.read()
 
-# Replace the _check_cuda_version function to skip the check
-content = content.replace(
-    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:",
-    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:\n    return  # Patched for CUDA 13.x compatibility"
-)
+                # Replace the _check_cuda_version function to skip the check
+                content = content.replace(
+                    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:",
+                    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:\n    return  # Patched for CUDA 13.x compatibility"
+                )
 
-with open(filepath, "w") as f:
-    f.write(content)
-print(f"Patched {filepath}")
-EOPY
-                  python /tmp/patch_torch.py "$TORCH_UTILS/cpp_extension.py"
-              fi
-          fi
+                with open(filepath, "w") as f:
+                    f.write(content)
+                print(f"Patched {filepath}")
+                EOPY
+                                  python /tmp/patch_torch.py "$TORCH_UTILS/cpp_extension.py"
+                              fi
+                          fi
 
-          pip wheel "$PACKAGE==$VERSION" \
-              $BUILD_ARGS \
-              --wheel-dir=/workspace/wheels
+                          pip wheel "$PACKAGE==$VERSION" \
+                              $BUILD_ARGS \
+                              --wheel-dir=/workspace/wheels
 
-          echo "==> Built wheels:"
-          ls -lh /workspace/wheels/
-          '
+                          echo "==> Built wheels:"
+                          ls -lh /workspace/wheels/
+                          '
 
-          # Find the built wheel
-          WHEEL_FILE=$(ls wheels/*.whl | head -1)
-          if [ -z "$WHEEL_FILE" ]; then
-              echo "Error: No wheel file found"
-              exit 1
-          fi
+                          # Find the built wheel
+                          WHEEL_FILE=$(ls wheels/*.whl | head -1)
+                          if [ -z "$WHEEL_FILE" ]; then
+                              echo "Error: No wheel file found"
+                              exit 1
+                          fi
 
-          echo "wheel_file=$WHEEL_FILE" >> $GITHUB_OUTPUT
-          echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
+                          echo "wheel_file=$WHEEL_FILE" >> $GITHUB_OUTPUT
+                          echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
 
-      - name: Test wheel import
-        run: |
-          WHEEL_FILE="${{ steps.build.outputs.wheel_file }}"
-          TEST_IMPORT="${{ matrix.test_import }}"
-          CUDA="${{ matrix.cuda }}"
-          PYTHON="${{ matrix.python }}"
+                      - name: Test wheel import
+                        run: |
+                          WHEEL_FILE="${{ steps.build.outputs.wheel_file }}"
+                          TEST_IMPORT="${{ matrix.test_import }}"
+                          CUDA="${{ matrix.cuda }}"
+                          PYTHON="${{ matrix.python }}"
 
-          echo "Testing import of $TEST_IMPORT"
+                          echo "Testing import of $TEST_IMPORT"
 
-          docker run --rm \
-            -v "$(pwd)/wheels:/wheels" \
-            nvidia/cuda:${CUDA}-runtime-ubuntu22.04 \
-            bash -c "
-          set -euo pipefail
+                          docker run --rm \
+                            -v "$(pwd)/wheels:/wheels" \
+                            nvidia/cuda:${CUDA}-runtime-ubuntu22.04 \
+                            bash -c "
+                          set -euo pipefail
 
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update -qq
-          apt-get install -y -qq software-properties-common
-          add-apt-repository -y ppa:deadsnakes/ppa
-          apt-get update -qq
-          apt-get install -y -qq python${PYTHON} python${PYTHON}-venv
+                          export DEBIAN_FRONTEND=noninteractive
+                          apt-get update -qq
+                          apt-get install -y -qq software-properties-common
+                          add-apt-repository -y ppa:deadsnakes/ppa
+                          apt-get update -qq
+                          apt-get install -y -qq python${PYTHON} python${PYTHON}-venv
 
-          python${PYTHON} -m venv /venv
-          source /venv/bin/activate
-          pip install --quiet /wheels/*.whl
+                          python${PYTHON} -m venv /venv
+                          source /venv/bin/activate
+                          pip install --quiet /wheels/*.whl
 
-          echo '==> Testing import'
-          python -c 'import ${TEST_IMPORT}; print(\"✓ Import successful\")'
-          "
+                          echo '==> Testing import'
+                          python -c 'import ${TEST_IMPORT}; print(\"✓ Import successful\")'
+                          "
 
-      - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-${{ matrix.package }}-${{ matrix.version }}-py${{ matrix.python }}-cuda${{ matrix.cuda }}
-          path: wheels/*.whl
-          if-no-files-found: error
-          retention-days: 90
+                      - name: Upload wheel artifact
+                        uses: actions/upload-artifact@v4
+                        with:
+                          name: wheel-${{ matrix.package }}-${{ matrix.version }}-py${{ matrix.python }}-cuda${{ matrix.cuda }}
+                          path: wheels/*.whl
+                          if-no-files-found: error
+                          retention-days: 90
 
-      - name: Clean up Docker images
-        if: always()
-        run: |
-          echo "Cleaning up Docker images to free space..."
-          docker system prune -af
-          df -h
+                      - name: Clean up Docker images
+                        if: always()
+                        run: |
+                          echo "Cleaning up Docker images to free space..."
+                          docker system prune -af
+                          df -h
 
   release:
     name: Create Release and Update Index
