@@ -202,15 +202,39 @@ jobs:
           set -euo pipefail
 
           export DEBIAN_FRONTEND=noninteractive
-                          apt-get update -qq
-                          apt-get install -y -qq software-properties-common
-                          add-apt-repository -y ppa:deadsnakes/ppa
-                          apt-get update -qq
-                          apt-get install -y -qq python${PYTHON} python${PYTHON}-venv
+          apt-get update -qq
+          apt-get install -y -qq software-properties-common
+          add-apt-repository -y ppa:deadsnakes/ppa
+          apt-get update -qq
+          apt-get install -y -qq python${PYTHON} python${PYTHON}-venv
 
-                          python${PYTHON} -m venv /venv
-                          source /venv/bin/activate
-                          pip install --quiet /wheels/*.whl
+          python${PYTHON} -m venv /venv
+          source /venv/bin/activate
+          pip install --quiet --upgrade pip
+
+          # Install runtime dependencies based on CUDA version
+          CUDA_MAJOR=\$(echo ${CUDA} | cut -d'.' -f1)
+          CUDA_MINOR=\$(echo ${CUDA} | cut -d'.' -f2)
+
+          echo '==> Installing runtime dependencies'
+          if [ \"\$CUDA_MAJOR\" = \"13\" ]; then
+              # For CUDA 13.x, use PyTorch nightly
+              pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu124 || \
+              pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu121 || \
+              pip install --quiet torch
+          elif [ \"\$CUDA_MAJOR\" = \"12\" ]; then
+              # For CUDA 12.x, use stable PyTorch
+              pip install --quiet torch --index-url https://download.pytorch.org/whl/cu\${CUDA_MAJOR}\${CUDA_MINOR}
+          else
+              pip install --quiet torch
+          fi
+
+          # Install numpy
+          pip install --quiet numpy
+
+          # Install the wheel
+          echo '==> Installing wheel'
+          pip install --quiet /wheels/*.whl
 
           echo '==> Testing import'
           python -c 'import ${TEST_IMPORT}; print(\"✓ Import successful\")'

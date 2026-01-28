@@ -227,6 +227,15 @@ packages:
   2. Installs other dependencies (`ninja`, `numpy`, `packaging`, `psutil`) from default PyPI
 - **Implementation:** `scripts/build_in_docker.sh` filters out `torch` from `EXTRA_DEPS` and installs separately
 
+**Test import failures (undefined symbol errors):**
+- Error: `undefined symbol: _ZN3c104cuda29c10_cuda_check_implementationEiPKcS2_ib`
+- **Cause:** flash-attn is a C++ extension that links against PyTorch's CUDA libraries at runtime
+- **Solution:** Test step installs runtime dependencies before testing:
+  1. Installs PyTorch (matching CUDA version) in test container
+  2. Installs numpy
+  3. Then installs and tests the wheel
+- **Why this works:** PyTorch provides the shared libraries (`.so` files) that flash-attn needs to load at import time
+
 ## Workflow Permissions
 
 Required permissions in `.github/workflows/build-wheels.yml`:
