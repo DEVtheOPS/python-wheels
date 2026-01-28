@@ -4,23 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: 'Specific package to build (optional, builds all if empty)'
+        description: "Specific package to build (optional, builds all if empty)"
         required: false
         type: string
       python_versions:
-        description: 'Python versions (comma-separated)'
+        description: "Python versions (comma-separated)"
         required: false
-        default: '3.12,3.13'
+        default: "3.12,3.13"
         type: string
       cuda_versions:
-        description: 'CUDA versions (comma-separated)'
+        description: "CUDA versions (comma-separated)"
         required: false
-        default: '12.1.0,13.0'
+        default: "12.9.1,13.1.1"
         type: string
 
   push:
     paths:
-      - 'config/packages.yml'
+      - "config/packages.yml"
     branches:
       - main
 
@@ -43,7 +43,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install PyYAML
         run: pip install pyyaml
@@ -122,7 +122,7 @@ jobs:
         with:
           timeout_minutes: 10
           max_attempts: 3
-          command: docker pull nvidia/cuda:${{ matrix.cuda }}-devel-ubuntu22.04
+          command: docker pull nvidia/cuda:${{ matrix.cuda }}-cudnn-devel-ubuntu24.04
 
       - name: Build wheel
         id: build
@@ -296,7 +296,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Generate PyPI index
         run: |
