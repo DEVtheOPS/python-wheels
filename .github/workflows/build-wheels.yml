@@ -186,22 +186,22 @@ jobs:
           echo "wheel_file=$WHEEL_FILE" >> $GITHUB_OUTPUT
           echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
 
-                      - name: Test wheel import
-                        run: |
-                          WHEEL_FILE="${{ steps.build.outputs.wheel_file }}"
-                          TEST_IMPORT="${{ matrix.test_import }}"
-                          CUDA="${{ matrix.cuda }}"
-                          PYTHON="${{ matrix.python }}"
+      - name: Test wheel import
+        run: |
+          WHEEL_FILE="${{ steps.build.outputs.wheel_file }}"
+          TEST_IMPORT="${{ matrix.test_import }}"
+          CUDA="${{ matrix.cuda }}"
+          PYTHON="${{ matrix.python }}"
 
-                          echo "Testing import of $TEST_IMPORT"
+          echo "Testing import of $TEST_IMPORT"
 
-                          docker run --rm \
-                            -v "$(pwd)/wheels:/wheels" \
-                            nvidia/cuda:${CUDA}-runtime-ubuntu22.04 \
-                            bash -c "
-                          set -euo pipefail
+          docker run --rm \
+            -v "$(pwd)/wheels:/wheels" \
+            nvidia/cuda:${CUDA}-runtime-ubuntu22.04 \
+            bash -c "
+          set -euo pipefail
 
-                          export DEBIAN_FRONTEND=noninteractive
+          export DEBIAN_FRONTEND=noninteractive
                           apt-get update -qq
                           apt-get install -y -qq software-properties-common
                           add-apt-repository -y ppa:deadsnakes/ppa
@@ -212,24 +212,24 @@ jobs:
                           source /venv/bin/activate
                           pip install --quiet /wheels/*.whl
 
-                          echo '==> Testing import'
-                          python -c 'import ${TEST_IMPORT}; print(\"✓ Import successful\")'
-                          "
+          echo '==> Testing import'
+          python -c 'import ${TEST_IMPORT}; print(\"✓ Import successful\")'
+          "
 
-                      - name: Upload wheel artifact
-                        uses: actions/upload-artifact@v4
-                        with:
-                          name: wheel-${{ matrix.package }}-${{ matrix.version }}-py${{ matrix.python }}-cuda${{ matrix.cuda }}
-                          path: wheels/*.whl
-                          if-no-files-found: error
-                          retention-days: 90
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.package }}-${{ matrix.version }}-py${{ matrix.python }}-cuda${{ matrix.cuda }}
+          path: wheels/*.whl
+          if-no-files-found: error
+          retention-days: 90
 
-                      - name: Clean up Docker images
-                        if: always()
-                        run: |
-                          echo "Cleaning up Docker images to free space..."
-                          docker system prune -af
-                          df -h
+      - name: Clean up Docker images
+        if: always()
+        run: |
+          echo "Cleaning up Docker images to free space..."
+          docker system prune -af
+          df -h
 
   release:
     name: Create Release and Update Index
