@@ -88,6 +88,7 @@ $RUNTIME run --rm \
     -e PYTHON_VERSION="$PYTHON_VERSION" \
     -e BUILD_ARGS="$BUILD_ARGS" \
     -e EXTRA_DEPS="$EXTRA_DEPS" \
+    -e MAX_JOBS="2" \
     "$DOCKER_IMAGE" \
     bash -c '
 set -euo pipefail
@@ -155,6 +156,7 @@ echo "==> Building $PACKAGE==$VERSION"
 
 # Set environment variables to handle CUDA version mismatches
 export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
+export MAX_JOBS="${MAX_JOBS:-2}"
 
 # For CUDA 13.x, patch PyTorch to bypass CUDA version check
 CUDA_VER_MAJOR=$(nvcc --version | grep "release" | sed -n "s/.*release \([0-9]*\)\.\([0-9]*\).*/\1/p")

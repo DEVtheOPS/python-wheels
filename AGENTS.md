@@ -207,6 +207,16 @@ packages:
 - Cleans up Docker images after each build
 - If still failing, reduce parallelism by building fewer versions at once
 
+**Build timeout / runner lost communication:**
+- Error: `The hosted runner lost communication with the server`
+- **Cause:** flash-attn compilation is extremely CPU/memory intensive
+- **Solution:** Workflow limits resource usage:
+  - `max-parallel: 2` - Only 2 builds run concurrently (prevents overwhelming runners)
+  - `MAX_JOBS=2` - Limits compilation parallelism within each build
+  - `timeout-minutes: 120` - Fail gracefully after 2 hours
+- **Result:** Each build takes 30-60 minutes but completes successfully
+- **Manual trigger tip:** Build one package at a time by specifying package name in workflow dispatch
+
 **CUDA version mismatch with PyTorch:**
 - Error: `RuntimeError: The detected CUDA version (X.X) mismatches the version that was used to compile PyTorch (Y.Y)`
 - **Cause:** PyTorch (required by flash-attn) normally enforces strict CUDA version matching

@@ -105,9 +105,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepare
     if: needs.prepare.outputs.matrix != '{"include":[]}'
+    timeout-minutes: 120
 
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     steps:
@@ -173,6 +175,7 @@ jobs:
             -e CUDA_VERSION="$CUDA" \
             -e BUILD_ARGS="$BUILD_ARGS" \
             -e EXTRA_DEPS="$EXTRA_DEPS" \
+            -e MAX_JOBS="2" \
             nvidia/cuda:${CUDA}-devel-ubuntu22.04 \
             bash /workspace/scripts/build_in_docker.sh
 
