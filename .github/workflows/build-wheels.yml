@@ -99,3 +99,141 @@ jobs:
           print(f"Generated matrix with {len(matrix_entries)} jobs")
           print(json.dumps(matrix, indent=2))
           EOF
+
+  build:
+    name: Build ${{ matrix.package }} (py${{ matrix.python }}, CUDA ${{ matrix.cuda }})
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: needs.prepare.outputs.matrix != '{"include":[]}'
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Pull CUDA Docker image
+        uses: nick-invision/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: docker pull nvidia/cuda:${{ matrix.cuda }}-devel-ubuntu22.04
+
+      - name: Build wheel
+        id: build
+        run: |
+          set -euo pipefail
+
+          PACKAGE="${{ matrix.package }}"
+          VERSION="${{ matrix.version }}"
+          PYTHON="${{ matrix.python }}"
+          CUDA="${{ matrix.cuda }}"
+          BUILD_ARGS="${{ matrix.build_args }}"
+          EXTRA_DEPS="${{ matrix.extra_deps }}"
+
+          echo "Building $PACKAGE==$VERSION for Python $PYTHON with CUDA $CUDA"
+
+          OUTPUT_DIR="$(pwd)/wheels"
+          mkdir -p "$OUTPUT_DIR"
+
+          # Build wheel in Docker
+          docker run --rm \
+            -v "$OUTPUT_DIR:/workspace/wheels" \
+            -e PACKAGE="$PACKAGE" \
+            -e VERSION="$VERSION" \
+            -e PYTHON_VERSION="$PYTHON" \
+            -e BUILD_ARGS="$BUILD_ARGS" \
+            -e EXTRA_DEPS="$EXTRA_DEPS" \
+            nvidia/cuda:${CUDA}-devel-ubuntu22.04 \
+            bash -c '
+          set -euo pipefail
+
+          echo "==> Installing Python $PYTHON_VERSION"
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq software-properties-common
+          add-apt-repository -y ppa:deadsnakes/ppa
+          apt-get update -qq
+          apt-get install -y -qq \
+              python${PYTHON_VERSION} \
+              python${PYTHON_VERSION}-dev \
+              python${PYTHON_VERSION}-venv \
+              python3-pip \
+              git \
+              build-essential
+
+          # Create venv
+          python${PYTHON_VERSION} -m venv /venv
+          source /venv/bin/activate
+          pip install --quiet --upgrade pip wheel setuptools
+
+          echo "==> Python version: $(python --version)"
+          echo "==> CUDA version: $(nvcc --version | grep release)"
+
+          # Install build dependencies
+          if [ -n "$EXTRA_DEPS" ]; then
+              echo "==> Installing build dependencies: $EXTRA_DEPS"
+              pip install --quiet $EXTRA_DEPS
+          fi
+
+          echo "==> Building $PACKAGE==$VERSION"
+          pip wheel "$PACKAGE==$VERSION" \
+              $BUILD_ARGS \
+              --wheel-dir=/workspace/wheels
+
+          echo "==> Built wheels:"
+          ls -lh /workspace/wheels/
+          '
+
+          # Find the built wheel
+          WHEEL_FILE=$(ls wheels/*.whl | head -1)
+          if [ -z "$WHEEL_FILE" ]; then
+              echo "Error: No wheel file found"
+              exit 1
+          fi
+
+          echo "wheel_file=$WHEEL_FILE" >> $GITHUB_OUTPUT
+          echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
+
+      - name: Test wheel import
+        run: |
+          WHEEL_FILE="${{ steps.build.outputs.wheel_file }}"
+          TEST_IMPORT="${{ matrix.test_import }}"
+          CUDA="${{ matrix.cuda }}"
+          PYTHON="${{ matrix.python }}"
+
+          echo "Testing import of $TEST_IMPORT"
+
+          docker run --rm \
+            -v "$(pwd)/wheels:/wheels" \
+            nvidia/cuda:${CUDA}-runtime-ubuntu22.04 \
+            bash -c "
+          set -euo pipefail
+
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq software-properties-common
+          add-apt-repository -y ppa:deadsnakes/ppa
+          apt-get update -qq
+          apt-get install -y -qq python${PYTHON} python${PYTHON}-venv
+
+          python${PYTHON} -m venv /venv
+          source /venv/bin/activate
+          pip install --quiet /wheels/*.whl
+
+          echo '==> Testing import'
+          python -c 'import ${TEST_IMPORT}; print(\"✓ Import successful\")'
+          "
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.package }}-${{ matrix.version }}-py${{ matrix.python }}-cuda${{ matrix.cuda }}
+          path: wheels/*.whl
+          if-no-files-found: error
+          retention-days: 90
