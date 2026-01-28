@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+trap 'echo "Error: Build failed at line $LINENO. Exit code: $?" >&2' ERR
 
 # Build a Python wheel inside a CUDA Docker container
 # Usage: ./build_wheel.sh <package> <version> <python> <cuda>
@@ -16,6 +17,41 @@ if [ -z "$PACKAGE" ] || [ -z "$VERSION" ] || [ -z "$PYTHON_VERSION" ] || [ -z "$
     echo "Example: $0 flash-attn 2.5.0 3.12 12.1.0"
     exit 1
 fi
+
+# Validate inputs
+validate_package_name() {
+    if ! [[ "$1" =~ ^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$ ]]; then
+        echo "Error: Invalid package name: $1" >&2
+        exit 1
+    fi
+}
+
+validate_version() {
+    if ! [[ "$1" =~ ^[0-9]+(\.[0-9]+)*([a-z]+[0-9]*)?$ ]]; then
+        echo "Error: Invalid version: $1" >&2
+        exit 1
+    fi
+}
+
+validate_python_version() {
+    if ! [[ "$1" =~ ^3\.(8|9|10|11|12|13)$ ]]; then
+        echo "Error: Unsupported Python version: $1. Supported: 3.8-3.13" >&2
+        exit 1
+    fi
+}
+
+validate_cuda_version() {
+    if ! [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Invalid CUDA version format: $1. Expected: X.Y.Z" >&2
+        exit 1
+    fi
+}
+
+# Validate all inputs
+validate_package_name "$PACKAGE"
+validate_version "$VERSION"
+validate_python_version "$PYTHON_VERSION"
+validate_cuda_version "$CUDA_VERSION"
 
 echo "Building $PACKAGE==$VERSION for Python $PYTHON_VERSION with CUDA $CUDA_VERSION"
 
@@ -71,6 +107,7 @@ python --version
 echo ""
 echo "==> Building $PACKAGE==$VERSION"
 
+# TODO: Read extra_deps from config/packages.yml for the specified package
 # Install build dependencies (will be read from config in next task)
 pip install packaging ninja torch
 
