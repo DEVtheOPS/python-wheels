@@ -236,6 +236,16 @@ packages:
   3. Then installs and tests the wheel
 - **Why this works:** PyTorch provides the shared libraries (`.so` files) that flash-attn needs to load at import time
 
+**CUDA 13.x wheels fail import tests:**
+- Error: Same undefined symbol errors as above
+- **Root cause:** PyTorch doesn't officially support CUDA 13.x yet (as of 2026-01-28)
+- **What happens:**
+  - Build: flash-attn compiles against CUDA 13.0.2 toolkit with patched PyTorch
+  - Test: Tries to load wheel with PyTorch that only has CUDA 12.x support
+  - Result: Symbol mismatch causes import failure
+- **Status:** CUDA 13.x wheels are built but import tests are allowed to fail (`continue-on-error`)
+- **For users:** CUDA 13.x wheels are experimental. They may work in environments with proper PyTorch+CUDA 13.x support, but this is untested. Use CUDA 12.x wheels for production.
+
 ## Workflow Permissions
 
 Required permissions in `.github/workflows/build-wheels.yml`:
