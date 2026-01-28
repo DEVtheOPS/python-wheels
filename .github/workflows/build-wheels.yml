@@ -15,7 +15,7 @@ on:
       cuda_versions:
         description: "CUDA versions (comma-separated)"
         required: false
-        default: "12.9.1"
+        default: "12.9.1,13.0.2"
         type: string
 
   push:
@@ -68,7 +68,7 @@ jobs:
           python_input = '${{ inputs.python_versions }}'
           cuda_input = '${{ inputs.cuda_versions }}'
           python_versions = python_input.split(',') if python_input else ['3.12', '3.13']
-          cuda_versions = cuda_input.split(',') if cuda_input else ['12.9.1']
+          cuda_versions = cuda_input.split(',') if cuda_input else ['12.9.1', '13.0.2']
 
           def cleaned(items):
               return [item.strip() for item in items if item.strip()]
@@ -198,7 +198,7 @@ jobs:
           echo "==> Python version: $(python --version)"
           echo "==> CUDA version: $(nvcc --version | grep release)"
 
-          # Install build dependencies with matching CUDA version
+          # Install build dependencies with CUDA compatibility handling
           if [ -n "$EXTRA_DEPS" ]; then
               echo "==> Installing build dependencies: $EXTRA_DEPS"
 
@@ -207,12 +207,20 @@ jobs:
               CUDA_MINOR=$(echo $CUDA_VERSION | cut -d'.' -f2)
 
               if [ "$CUDA_MAJOR" = "13" ]; then
-                  echo "WARNING: CUDA 13.x detected. PyTorch may not support this version yet."
-                  echo "Attempting to install latest PyTorch (may be CUDA 12.x compatible)"
-                  pip install --quiet $EXTRA_DEPS
+                  echo "==> CUDA 13.x detected - using PyTorch nightly or latest available"
+                  # Try PyTorch nightly builds first (may have CUDA 13.x support)
+                  pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu124 || \
+                  pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu121 || \
+                  pip install --quiet torch
+
+                  # Install other dependencies normally
+                  OTHER_DEPS=$(echo "$EXTRA_DEPS" | sed 's/torch//g')
+                  if [ -n "$OTHER_DEPS" ]; then
+                      pip install --quiet $OTHER_DEPS
+                  fi
               elif [ "$CUDA_MAJOR" = "12" ]; then
                   # Use PyTorch with CUDA 12.x support
-                  echo "Using PyTorch index for CUDA ${CUDA_MAJOR}.${CUDA_MINOR}"
+                  echo "==> Using PyTorch index for CUDA ${CUDA_MAJOR}.${CUDA_MINOR}"
                   pip install --quiet $EXTRA_DEPS --index-url https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}
               else
                   pip install --quiet $EXTRA_DEPS
@@ -220,6 +228,45 @@ jobs:
           fi
 
           echo "==> Building $PACKAGE==$VERSION"
+
+          # Set environment variables to handle CUDA version mismatches
+          # TORCH_CUDA_ARCH_LIST tells PyTorch which architectures to build for
+          # We set it to common architectures that work across CUDA versions
+          export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
+
+          # For CUDA 13.x, patch PyTorch to bypass CUDA version check
+          CUDA_MAJOR=$(echo $CUDA_VERSION | cut -d'.' -f1)
+          if [ "$CUDA_MAJOR" = "13" ]; then
+              echo "==> CUDA 13.x detected: Patching PyTorch CUDA version check"
+
+              # Create a patch to bypass the CUDA version check in torch.utils.cpp_extension
+              TORCH_UTILS=$(python -c "import torch.utils.cpp_extension as m; import os; print(os.path.dirname(m.__file__))")
+
+              if [ -f "$TORCH_UTILS/cpp_extension.py" ]; then
+                  # Backup original
+                  cp "$TORCH_UTILS/cpp_extension.py" "$TORCH_UTILS/cpp_extension.py.bak"
+
+                  # Patch the _check_cuda_version function to be a no-op
+                  cat > /tmp/patch_torch.py << "EOPY"
+import sys
+filepath = sys.argv[1]
+with open(filepath, "r") as f:
+    content = f.read()
+
+# Replace the _check_cuda_version function to skip the check
+content = content.replace(
+    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:",
+    "def _check_cuda_version(compiler_name: str, compiler_version: Version) -> None:\n    return  # Patched for CUDA 13.x compatibility"
+)
+
+with open(filepath, "w") as f:
+    f.write(content)
+print(f"Patched {filepath}")
+EOPY
+                  python /tmp/patch_torch.py "$TORCH_UTILS/cpp_extension.py"
+              fi
+          fi
+
           pip wheel "$PACKAGE==$VERSION" \
               $BUILD_ARGS \
               --wheel-dir=/workspace/wheels

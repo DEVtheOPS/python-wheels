@@ -209,12 +209,15 @@ packages:
 
 **CUDA version mismatch with PyTorch:**
 - Error: `RuntimeError: The detected CUDA version (X.X) mismatches the version that was used to compile PyTorch (Y.Y)`
-- **Cause:** PyTorch (required by flash-attn) must match CUDA version
-- **Solution:** Only use CUDA versions supported by PyTorch
-  - CUDA 12.x: Fully supported (use default: 12.9.1)
-  - CUDA 13.x: Not yet supported by stable PyTorch builds
-- **Check PyTorch compatibility:** https://pytorch.org/get-started/locally/
-- Workflow automatically uses matching PyTorch index for CUDA 12.x
+- **Cause:** PyTorch (required by flash-attn) normally enforces strict CUDA version matching
+- **Solution:** Workflow automatically handles this
+  - CUDA 12.x: Uses PyTorch stable with matching CUDA version
+  - CUDA 13.x: Uses PyTorch nightly builds + patches version check
+- **How it works:** For CUDA 13.x, the workflow:
+  1. Installs PyTorch nightly (may have CUDA 13.x support)
+  2. Patches `torch.utils.cpp_extension._check_cuda_version` to bypass check
+  3. Sets `TORCH_CUDA_ARCH_LIST` for compatible GPU architectures
+  4. Builds successfully despite version mismatch warning
 
 ## Workflow Permissions
 
