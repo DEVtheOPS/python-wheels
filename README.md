@@ -144,9 +144,15 @@ GitHub Actions runners have limited space. The workflow includes cleanup steps, 
 
 ### Build timeout / runner lost communication
 
-flash-attn compilation is CPU/memory intensive. The workflow limits parallelism (`max-parallel: 2`), but you can:
-- Build one package at a time
+flash-attn compilation is extremely CPU/memory intensive. The workflow runs builds **sequentially** (`max-parallel: 1`) to prevent overwhelming runners. This means:
+- ⏱️ Each build takes 60-90 minutes
+- ⏱️ All 4 combinations take ~4-6 hours total
+- ✅ Builds complete successfully without timeouts
+
+To speed up for testing:
+- Build one package at a time using the `package` parameter
 - Build one Python version at a time
+- Build one CUDA version at a time
 
 ### Import test fails
 

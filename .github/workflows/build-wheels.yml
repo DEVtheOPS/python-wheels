@@ -109,7 +109,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     steps:
@@ -175,7 +175,7 @@ jobs:
             -e CUDA_VERSION="$CUDA" \
             -e BUILD_ARGS="$BUILD_ARGS" \
             -e EXTRA_DEPS="$EXTRA_DEPS" \
-            -e MAX_JOBS="2" \
+            -e MAX_JOBS="1" \
             nvidia/cuda:${CUDA}-devel-ubuntu22.04 \
             bash /workspace/scripts/build_in_docker.sh
 

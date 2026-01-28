@@ -208,13 +208,15 @@ packages:
 - If still failing, reduce parallelism by building fewer versions at once
 
 **Build timeout / runner lost communication:**
-- Error: `The hosted runner lost communication with the server`
-- **Cause:** flash-attn compilation is extremely CPU/memory intensive
-- **Solution:** Workflow limits resource usage:
-  - `max-parallel: 2` - Only 2 builds run concurrently (prevents overwhelming runners)
-  - `MAX_JOBS=2` - Limits compilation parallelism within each build
+- Error: `The hosted runner lost communication with the server` or exit code 137 (OOM killed)
+- **Cause:** flash-attn compilation is extremely CPU/memory intensive (compiles thousands of CUDA kernels)
+- **GitHub Actions runners**: 2 CPU cores, 7GB RAM - easily overwhelmed by CUDA compilation
+- **Solution:** Workflow limits resource usage aggressively:
+  - `max-parallel: 1` - Only 1 build runs at a time (sequential processing)
+  - `MAX_JOBS=1` - Single-threaded compilation (prevents memory spikes)
   - `timeout-minutes: 120` - Fail gracefully after 2 hours
-- **Result:** Each build takes 30-60 minutes but completes successfully
+- **Result:** Each build takes 60-90 minutes but completes successfully
+- **Trade-off:** 4 builds take ~4-6 hours total instead of 1-2 hours parallel
 - **Manual trigger tip:** Build one package at a time by specifying package name in workflow dispatch
 
 **CUDA version mismatch with PyTorch:**
