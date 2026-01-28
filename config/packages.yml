@@ -1,0 +1,15 @@
+# Package definitions for wheel building
+# Each package specifies versions, build configuration, and test imports
+
+packages:
+  flash-attn:
+    versions:
+      - "2.5.0"
+      - "2.5.6"
+    build_args: "--no-build-isolation"
+    extra_deps:
+      - "packaging"
+      - "ninja"
+      - "torch"
+    test_import: "flash_attn"
+    description: "Fast and memory-efficient exact attention"
