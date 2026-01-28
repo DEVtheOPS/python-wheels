@@ -66,8 +66,10 @@ echo ""
 echo "==> Building $PACKAGE==$VERSION"
 
 # Set environment variables to handle CUDA version mismatches
-export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
-export MAX_JOBS="${MAX_JOBS:-2}"
+# Reduced to only most common architectures to save memory
+# 8.6 = RTX 3000 series, 8.9 = RTX 4000 series, 9.0 = H100
+export TORCH_CUDA_ARCH_LIST="8.9;9.0"
+export MAX_JOBS="${MAX_JOBS:-1}"
 
 # For CUDA 13.x, patch PyTorch to bypass CUDA version check
 CUDA_MAJOR=$(echo $CUDA_VERSION | cut -d'.' -f1)

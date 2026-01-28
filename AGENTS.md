@@ -214,9 +214,12 @@ packages:
 - **Solution:** Workflow limits resource usage aggressively:
   - `max-parallel: 1` - Only 1 build runs at a time (sequential processing)
   - `MAX_JOBS=1` - Single-threaded compilation (prevents memory spikes)
+  - `--memory=6g` - Docker memory limit (prevents runaway processes)
+  - `TORCH_CUDA_ARCH_LIST="8.9;9.0"` - Only build for RTX 4000/H100 GPUs (reduced from 4 architectures to 2)
   - `timeout-minutes: 120` - Fail gracefully after 2 hours
 - **Result:** Each build takes 60-90 minutes but completes successfully
 - **Trade-off:** 4 builds take ~4-6 hours total instead of 1-2 hours parallel
+- **GPU compatibility**: Wheels support compute capability 8.9+ only (RTX 4000 series, H100, etc.)
 - **Manual trigger tip:** Build one package at a time by specifying package name in workflow dispatch
 
 **CUDA version mismatch with PyTorch:**

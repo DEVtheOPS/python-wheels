@@ -166,7 +166,10 @@ jobs:
           mkdir -p "$OUTPUT_DIR"
 
           # Build wheel in Docker using build script
+          # Memory limit set to 6GB to prevent OOM (runner has 7GB total)
           docker run --rm \
+            --memory=6g \
+            --memory-swap=6g \
             -v "$OUTPUT_DIR:/workspace/wheels" \
             -v "$(pwd)/scripts:/workspace/scripts:ro" \
             -e PACKAGE="$PACKAGE" \
