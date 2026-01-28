@@ -37,11 +37,9 @@ if [ -n "$EXTRA_DEPS" ]; then
     CUDA_MINOR=$(echo $CUDA_VERSION | cut -d'.' -f2)
 
     if [ "$CUDA_MAJOR" = "13" ]; then
-        echo "==> CUDA 13.x detected - using PyTorch nightly or latest available"
-        # Try PyTorch nightly builds first (may have CUDA 13.x support)
-        pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu124 || \
-        pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu121 || \
-        pip install --quiet torch
+        echo "==> CUDA 13.x detected - using PyTorch nightly with CUDA 13.0 support"
+        # Use PyTorch nightly with CUDA 13.0 support
+        pip install --quiet torch --index-url https://download.pytorch.org/whl/cu130
 
         # Install other dependencies normally
         OTHER_DEPS=$(echo "$EXTRA_DEPS" | sed 's/torch//g')

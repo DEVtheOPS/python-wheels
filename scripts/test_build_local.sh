@@ -249,10 +249,8 @@ CUDA_VER_MINOR=\$(echo ${CUDA_VERSION} | cut -d'.' -f2)
 
 echo '==> Installing runtime dependencies'
 if [ \"\$CUDA_VER_MAJOR\" = \"13\" ]; then
-    # For CUDA 13.x, use PyTorch nightly
-    pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu124 || \
-    pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu121 || \
-    pip install --quiet torch
+    # For CUDA 13.x, use PyTorch nightly with CUDA 13.0 support
+    pip install --quiet torch --index-url https://download.pytorch.org/whl/cu130
 elif [ \"\$CUDA_VER_MAJOR\" = \"12\" ]; then
     # For CUDA 12.x, use stable PyTorch
     pip install --quiet torch --index-url https://download.pytorch.org/whl/cu\${CUDA_VER_MAJOR}\${CUDA_VER_MINOR}

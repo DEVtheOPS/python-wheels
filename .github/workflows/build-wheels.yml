@@ -187,7 +187,6 @@ jobs:
           echo "wheel_name=$(basename $WHEEL_FILE)" >> $GITHUB_OUTPUT
 
       - name: Test wheel import
-        continue-on-error: ${{ startsWith(matrix.cuda, '13.') }}
         run: |
           WHEEL_FILE="${{ steps.build.outputs.wheel_file }}"
           TEST_IMPORT="${{ matrix.test_import }}"
@@ -219,14 +218,9 @@ jobs:
 
           echo '==> Installing runtime dependencies'
           if [ \"\$CUDA_MAJOR\" = \"13\" ]; then
-              echo 'WARNING: CUDA 13.x support is experimental'
-              echo 'PyTorch does not officially support CUDA 13.x yet'
-              echo 'Attempting to use PyTorch nightly builds...'
-
-              # Try PyTorch nightly (these are still CUDA 12.x, not 13.x)
-              pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu124 || \
-              pip install --quiet --pre torch --index-url https://download.pytorch.org/whl/nightly/cu121 || \
-              pip install --quiet torch
+              echo 'Using PyTorch nightly with CUDA 13.0 support'
+              # Use PyTorch nightly with CUDA 13.0 support
+              pip install --quiet torch --index-url https://download.pytorch.org/whl/cu130
 
               echo 'Installed PyTorch version:'
               pip show torch | grep Version

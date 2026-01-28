@@ -211,13 +211,13 @@ packages:
 - Error: `RuntimeError: The detected CUDA version (X.X) mismatches the version that was used to compile PyTorch (Y.Y)`
 - **Cause:** PyTorch (required by flash-attn) normally enforces strict CUDA version matching
 - **Solution:** Workflow automatically handles this
-  - CUDA 12.x: Uses PyTorch stable with matching CUDA version
-  - CUDA 13.x: Uses PyTorch nightly builds + patches version check
+  - CUDA 12.x: Uses PyTorch stable with matching CUDA version from `https://download.pytorch.org/whl/cu12X`
+  - CUDA 13.x: Uses PyTorch nightly with CUDA 13.0 support from `https://download.pytorch.org/whl/cu130`
 - **How it works:** For CUDA 13.x, the workflow:
-  1. Installs PyTorch nightly (may have CUDA 13.x support)
+  1. Installs PyTorch nightly (2.9.0+cu130) with CUDA 13.0 support
   2. Patches `torch.utils.cpp_extension._check_cuda_version` to bypass check
   3. Sets `TORCH_CUDA_ARCH_LIST` for compatible GPU architectures
-  4. Builds successfully despite version mismatch warning
+  4. Builds successfully with proper CUDA 13.x runtime support
 
 **Missing dependencies (ninja, numpy, etc.):**
 - Error: `ERROR: Could not find a version that satisfies the requirement ninja`
@@ -236,15 +236,19 @@ packages:
   3. Then installs and tests the wheel
 - **Why this works:** PyTorch provides the shared libraries (`.so` files) that flash-attn needs to load at import time
 
-**CUDA 13.x wheels fail import tests:**
-- Error: Same undefined symbol errors as above
-- **Root cause:** PyTorch doesn't officially support CUDA 13.x yet (as of 2026-01-28)
-- **What happens:**
-  - Build: flash-attn compiles against CUDA 13.0.2 toolkit with patched PyTorch
-  - Test: Tries to load wheel with PyTorch that only has CUDA 12.x support
-  - Result: Symbol mismatch causes import failure
-- **Status:** CUDA 13.x wheels are built but import tests are allowed to fail (`continue-on-error`)
-- **For users:** CUDA 13.x wheels are experimental. They may work in environments with proper PyTorch+CUDA 13.x support, but this is untested. Use CUDA 12.x wheels for production.
+**CUDA 13.x support:**
+- **Status:** Fully supported via PyTorch nightly builds with CUDA 13.0 support
+- **PyTorch version:** 2.9.0+cu130 from `https://download.pytorch.org/whl/cu130`
+- **Build process:**
+  - Installs PyTorch nightly with CUDA 13.0 support
+  - Patches version check to allow compilation
+  - Compiles flash-attn against CUDA 13.0.2 toolkit
+  - Tests with same PyTorch nightly version
+- **For users:** CUDA 13.x wheels work with PyTorch 2.9.0+cu130 or compatible versions. Install with:
+  ```bash
+  pip install torch --index-url https://download.pytorch.org/whl/cu130
+  pip install flash-attn --extra-index-url https://USER.github.io/REPO/simple/
+  ```
 
 ## Workflow Permissions
 
