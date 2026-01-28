@@ -51,7 +51,14 @@ if [ -n "$EXTRA_DEPS" ]; then
     elif [ "$CUDA_MAJOR" = "12" ]; then
         # Use PyTorch with CUDA 12.x support
         echo "==> Using PyTorch index for CUDA ${CUDA_MAJOR}.${CUDA_MINOR}"
-        pip install --quiet $EXTRA_DEPS --index-url https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}
+        # Install torch from CUDA-specific index
+        pip install --quiet torch --index-url https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}
+
+        # Install other dependencies from PyPI
+        OTHER_DEPS=$(echo "$EXTRA_DEPS" | sed 's/torch//g')
+        if [ -n "$OTHER_DEPS" ]; then
+            pip install --quiet $OTHER_DEPS
+        fi
     else
         pip install --quiet $EXTRA_DEPS
     fi

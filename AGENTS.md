@@ -219,6 +219,14 @@ packages:
   3. Sets `TORCH_CUDA_ARCH_LIST` for compatible GPU architectures
   4. Builds successfully despite version mismatch warning
 
+**Missing dependencies (ninja, numpy, etc.):**
+- Error: `ERROR: Could not find a version that satisfies the requirement ninja`
+- **Cause:** PyTorch CUDA-specific index (`https://download.pytorch.org/whl/cu121`) only contains PyTorch packages
+- **Solution:** Workflow separates dependency installation:
+  1. Installs `torch` from PyTorch CUDA-specific index
+  2. Installs other dependencies (`ninja`, `numpy`, `packaging`, `psutil`) from default PyPI
+- **Implementation:** `scripts/build_in_docker.sh` filters out `torch` from `EXTRA_DEPS` and installs separately
+
 ## Workflow Permissions
 
 Required permissions in `.github/workflows/build-wheels.yml`:
