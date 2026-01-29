@@ -16,7 +16,7 @@ Building packages like `flash-attn` and `xformers` from source takes 30+ minutes
 Current packages available:
 - **flash-attn** 2.8.3
 
-**GPU Compatibility:** Wheels are compiled for CUDA compute capability 8.9+ (RTX 4000 series, H100, and newer GPUs). This limitation is necessary to fit compilation within GitHub Actions runner memory constraints.
+**GPU Compatibility:** Wheels are compiled for CUDA compute capability **8.6 ONLY** (RTX 3080/3090/3090Ti, A100). This limitation is necessary to fit compilation within GitHub Actions runner memory constraints (7GB RAM). Other GPUs will NOT work.
 
 See `config/packages.yml` for full configuration.
 

@@ -219,7 +219,10 @@ packages:
   - `timeout-minutes: 120` - Fail gracefully after 2 hours
 - **Result:** Each build takes 60-90 minutes but completes successfully
 - **Trade-off:** 4 builds take ~4-6 hours total instead of 1-2 hours parallel
-- **GPU compatibility**: Wheels support compute capability 8.9+ only (RTX 4000 series, H100, etc.)
+- **GPU compatibility**: Wheels support compute capability 8.6 ONLY (RTX 3080/3090/3090Ti, A100)
+  - Uses `FLASH_ATTENTION_CUDA_ARCHS="86"` environment variable
+  - Building for multiple architectures causes OOM even with max-parallel: 1
+  - ❌ H100 (9.0), RTX 4000 (8.9), older GPUs NOT supported
 - **Manual trigger tip:** Build one package at a time by specifying package name in workflow dispatch
 
 **CUDA version mismatch with PyTorch:**

@@ -66,9 +66,11 @@ echo ""
 echo "==> Building $PACKAGE==$VERSION"
 
 # Set environment variables to handle CUDA version mismatches
-# Reduced to only most common architectures to save memory
-# 8.6 = RTX 3000 series, 8.9 = RTX 4000 series, 9.0 = H100
-export TORCH_CUDA_ARCH_LIST="8.9;9.0"
+# Build for ONLY ONE architecture to minimize memory usage
+# 8.6 = Ampere (RTX 3080/3090/3090Ti, A100)
+export TORCH_CUDA_ARCH_LIST="8.6"
+# flash-attn-specific environment variable (space-separated, no semicolons)
+export FLASH_ATTENTION_CUDA_ARCHS="86"
 export MAX_JOBS="${MAX_JOBS:-1}"
 
 # For CUDA 13.x, patch PyTorch to bypass CUDA version check
